@@ -1,45 +1,27 @@
-{
-  "name": "react-example",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "tsx api/server.ts",
-    "build": "vite build",
-    "preview": "vite preview",
-    "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@google/genai": "^1.29.0",
-    "@supabase/supabase-js": "^2.97.0",
-    "@tailwindcss/vite": "^4.1.14",
-    "@tanstack/react-query": "^5.90.21",
-    "@vitejs/plugin-react": "^5.0.4",
-    "better-sqlite3": "^12.4.1",
-    "clsx": "^2.1.1",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
-    "express-rate-limit": "^8.2.1",
-    "helmet": "^8.1.0",
-    "lucide-react": "^0.546.0",
-    "motion": "^12.23.24",
-    "node-cron": "^4.2.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^7.13.1",
-    "tailwind-merge": "^3.5.0",
-    "vite": "^6.2.0",
-    "zustand": "^5.0.11"
-  },
-  "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/node": "^22.14.0",
-    "@types/node-cron": "^3.0.11",
-    "autoprefixer": "^10.4.21",
-    "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
-  }
+﻿import React from 'react';
+import Sidebar from './Sidebar';
+import Header from './Header';
+import RestaurantList from './RestaurantList';
+import { useDashboardStore } from '../store/useDashboardStore';
+
+export default function Dashboard() {
+  const { activeTab } = useDashboardStore();
+
+  const handleLogout = () => {
+    console.log('Chiqish bosildi');
+  };
+
+  return (
+    <div className="flex h-screen w-full">
+      <Sidebar onLogout={handleLogout} />
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+        <div className="flex-1 overflow-auto p-6">
+          {activeTab === 'dashboard' && <div className="text-2xl font-bold">Bosh sahifa (Dashboard)</div>}
+          {activeTab === 'agents' && <div className="text-2xl font-bold">Yangi restoran ochish</div>}
+          {activeTab === 'restaurants' && <RestaurantList />}
+        </div>
+      </main>
+    </div>
+  );
 }
