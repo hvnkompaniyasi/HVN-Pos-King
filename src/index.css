@@ -1,0 +1,298 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Search, Store, Phone, MapPin, Calendar, Edit3, ShieldAlert, ShieldCheck, Trash2, X, AlertTriangle } from 'lucide-react';
+import { useDashboardStore } from '../../store/useDashboardStore';
+import { useRestaurants, useUpdateRestaurant, useDeleteRestaurant } from '../../hooks/useRestaurants';
+import { cn } from '../../lib/utils';
+import { Restaurant } from '../../types';
+
+export default function RestaurantList() {
+  const { searchQuery, setSearchQuery, setEditingRestaurant, setFormData, setActiveTab } = useDashboardStore();
+  const { data: restaurants = [], isLoading } = useRestaurants();
+  const updateMutation = useUpdateRestaurant();
+  const deleteMutation = useDeleteRestaurant();
+
+  const [deletingRestaurant, setDeletingRestaurant] = useState<Restaurant | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState('');
+
+  const filteredRestaurants = restaurants.filter(r => 
+    r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.phone?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getDaysLeft = (dateStr: string | null) => {
+    if (!dateStr) return 'Muddatsiz';
+    const target = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return 'Muddati o\'tgan';
+    if (diffDays === 0) return 'Bugun tugaydi';
+    return `${diffDays} kun qoldi`;
+  };
+
+  const startEdit = (restaurant: Restaurant) => {
+    setEditingRestaurant(restaurant);
+    setFormData({
+      name: restaurant.name || '',
+      plan_type: (restaurant.plan_type as any) || 'lite',
+      paid_until: restaurant.paid_until ? restaurant.paid_until.split('T')[0] : '',
+      phone: restaurant.phone || '',
+      address: restaurant.address || '',
+      info: restaurant.info || '',
+      login_email: '',
+      password_hint: '',
+      is_active: restaurant.is_active
+    });
+    setActiveTab('agents');
+  };
+
+  const toggleStatus = async (restaurant: Restaurant) => {
+    try {
+      await updateMutation.mutateAsync({ id: restaurant.id, is_active: !restaurant.is_active });
+      
+      // Notify Telegram
+      await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'STATUS_TOGGLED',
+          data: { name: restaurant.name, is_active: !restaurant.is_active }
+        })
+      });
+    } catch (err: any) {
+      alert('Xatolik: ' + err.message);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingRestaurant) return;
+    
+    if (deleteConfirmName !== deletingRestaurant.name) {
+      alert('Restoran nomi noto\'g\'ri kiritildi');
+      return;
+    }
+    if (deleteConfirmPhrase !== 'o\'chirishni tasdiqlayman') {
+      alert('Tasdiqlash jumlasi noto\'g\'ri kiritildi');
+      return;
+    }
+
+    try {
+      await deleteMutation.mutateAsync(deletingRestaurant.id);
+      
+      // Notify Telegram
+      await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'RESTAURANT_DELETED',
+          data: { name: deletingRestaurant.name }
+        })
+      });
+
+      alert('Restoran muvaffaqiyatli o\'chirildi');
+      setDeletingRestaurant(null);
+      setDeleteConfirmName('');
+      setDeleteConfirmPhrase('');
+    } catch (err: any) {
+      alert('Xatolik: ' + err.message);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-20 text-center">Yuklanmoqda...</div>;
+  }
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="space-y-8"
+    >
+      <div className="flex justify-between items-end">
+        <div>
+          <p className="text-xs font-mono text-agent-muted dark:text-dark-muted uppercase tracking-widest mb-1">Ma'lumotlar bazasi</p>
+          <h2 className="text-3xl font-bold tracking-tighter uppercase dark:text-white">Restoranlar</h2>
+        </div>
+        <div className="flex items-center gap-4 bg-white dark:bg-zinc-900 px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 w-80 shadow-sm">
+          <Search className="w-4 h-4 text-zinc-500" aria-hidden="true" />
+          <input 
+            type="text" 
+            aria-label="Restoranlarni qidirish"
+            placeholder="Nomi, manzil yoki tel..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-transparent border-none outline-none text-sm w-full font-mono dark:text-white"
+          />
+        </div>
+      </div>
+
+      {filteredRestaurants.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredRestaurants.map((restaurant) => (
+            <motion.div 
+              key={restaurant.id}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="agent-card p-6 flex flex-col gap-6 group"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center group-hover:bg-black dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-black transition-all">
+                    <Store className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold uppercase tracking-tight dark:text-white">{restaurant.name}</h3>
+                    <span className="text-[9px] font-mono text-agent-muted dark:text-dark-muted uppercase">{restaurant.plan_type}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setDeletingRestaurant(restaurant)}
+                    className="p-2 text-agent-muted dark:text-dark-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 text-agent-muted dark:text-dark-muted">
+                  <Phone className="w-4 h-4" />
+                  <span className="text-xs font-mono">{restaurant.phone || 'Noma\'lum'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-agent-muted dark:text-dark-muted">
+                  <MapPin className="w-4 h-4" />
+                  <span className="text-xs">{restaurant.address || 'Noma\'lum'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-agent-muted dark:text-dark-muted">
+                  <Calendar className="w-4 h-4" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium">
+                      {restaurant.paid_until ? new Date(restaurant.paid_until).toLocaleDateString() : 'Muddatsiz'}
+                    </span>
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase",
+                      getDaysLeft(restaurant.paid_until).includes('kun qoldi') ? "text-amber-500" : 
+                      getDaysLeft(restaurant.paid_until).includes('o\'tgan') ? "text-red-500" : "text-zinc-400"
+                    )}>
+                      {getDaysLeft(restaurant.paid_until)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <button 
+                  onClick={() => startEdit(restaurant)}
+                  className="flex items-center justify-center gap-2 py-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all dark:text-white"
+                >
+                  <Edit3 className="w-3 h-3" /> Tahrirlash
+                </button>
+                <button 
+                  onClick={() => toggleStatus(restaurant)}
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all text-white",
+                    restaurant.is_active ? "bg-zinc-900 dark:bg-zinc-700 hover:bg-red-600" : "bg-emerald-600 hover:bg-emerald-700"
+                  )}
+                >
+                  {restaurant.is_active ? (
+                    <><ShieldAlert className="w-3 h-3" /> Bloklash</>
+                  ) : (
+                    <><ShieldCheck className="w-3 h-3" /> Faollash</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <div className="agent-card p-20 flex flex-col items-center justify-center text-center">
+          <div className="w-16 h-16 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
+            <Search className="w-8 h-8 text-agent-muted dark:text-dark-muted" />
+          </div>
+          <h3 className="font-bold uppercase tracking-tight dark:text-white">Restoranlar topilmadi</h3>
+          <p className="text-xs text-agent-muted dark:text-dark-muted mt-2">Qidiruv so'rovini o'zgartirib ko'ring</p>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deletingRestaurant && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingRestaurant(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl p-8 border border-zinc-200 dark:border-zinc-800"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="w-12 h-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-500" />
+                </div>
+                <button onClick={() => setDeletingRestaurant(null)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                  <X className="w-5 h-5 dark:text-white" />
+                </button>
+              </div>
+
+              <h3 className="text-xl font-bold dark:text-white mb-2 uppercase tracking-tight">Restoranni o'chirish?</h3>
+              <p className="text-sm text-agent-muted dark:text-dark-muted mb-6">
+                Bu amalni qaytarib bo'lmaydi. Restoran va unga bog'liq barcha ma'lumotlar butunlay o'chiriladi.
+              </p>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Restoran nomini kiriting: <span className="text-red-500">{deletingRestaurant.name}</span></label>
+                  <input 
+                    type="text" 
+                    className="agent-input" 
+                    placeholder="Restoran nomi"
+                    value={deleteConfirmName}
+                    onChange={e => setDeleteConfirmName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Tasdiqlash uchun yozing: <span className="text-red-500">o'chirishni tasdiqlayman</span></label>
+                  <input 
+                    type="text" 
+                    className="agent-input" 
+                    placeholder="Tasdiqlash jumlasi"
+                    value={deleteConfirmPhrase}
+                    onChange={e => setDeleteConfirmPhrase(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-8">
+                <button 
+                  onClick={() => setDeletingRestaurant(null)}
+                  className="agent-button-secondary"
+                >
+                  Bekor qilish
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  className="bg-red-600 text-white py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-red-700 transition-all"
+                >
+                  O'chirish
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}

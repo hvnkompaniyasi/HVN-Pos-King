@@ -1,0 +1,165 @@
+import express from "express";
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
+
+dotenv.config();
+
+const app = express();
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for now to avoid issues with inline scripts/styles if any
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
+
+app.use("/api/", limiter);
+app.use(express.json());
+
+// Supabase client for server-side operations
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function sendTelegramMessage(message: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN || "8299278192:AAG5v9a86gvCeAs_00mjpSpks7VT4SNf31Y";
+  const chatId = process.env.TELEGRAM_CHAT_ID || "7897925720";
+
+  if (!token || !chatId) {
+    console.error("Telegram credentials missing");
+    return;
+  }
+
+  try {
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: "HTML",
+      }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      console.error("Telegram API error:", result);
+    }
+  } catch (error) {
+    console.error("Error sending Telegram message:", error);
+  }
+}
+
+async function checkPaymentDeadlines() {
+  try {
+    const { data: restaurants, error } = await supabase
+      .from("restaurants")
+      .select("*")
+      .eq("is_active", true);
+
+    if (error) throw error;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const restaurant of restaurants) {
+      if (!restaurant.paid_until) continue;
+
+      const paidUntil = new Date(restaurant.paid_until);
+      paidUntil.setHours(0, 0, 0, 0);
+
+      const diffTime = paidUntil.getTime() - today.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 3) {
+        await sendTelegramMessage(`⚠️ <b>To'lov muddati yaqinlashmoqda (3 kun qoldi)</b>\n\n<b>Restoran:</b> ${restaurant.name}\n<b>Muddati:</b> ${paidUntil.toLocaleDateString()}`);
+      } else if (diffDays === 1) {
+        await sendTelegramMessage(`🚨 <b>DIQQAT! To'lov muddati tugashiga 1 kun qoldi</b>\n\n<b>Restoran:</b> ${restaurant.name}\n<b>Muddati:</b> ${paidUntil.toLocaleDateString()}`);
+      }
+    }
+    return { success: true, checked: restaurants?.length || 0 };
+  } catch (error) {
+    console.error("Error in payment check:", error);
+    throw error;
+  }
+}
+
+// API Routes
+app.get("/api/cron/check-payments", async (req, res) => {
+  try {
+    const result = await checkPaymentDeadlines();
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/notify", async (req, res) => {
+  const { type, data } = req.body;
+  let message = "";
+
+  switch (type) {
+    case "RESTAURANT_CREATED":
+      message = `🚀 <b>Yangi restoran ochildi!</b>\n\n<b>Nomi:</b> ${data.name}\n<b>Plan:</b> ${data.plan_type}\n<b>Tel:</b> ${data.phone || 'Noma\'lum'}\n<b>Manzil:</b> ${data.address || 'Noma\'lum'}`;
+      break;
+    case "STATUS_TOGGLED":
+      message = `🔔 <b>Restoran holati o'zgardi</b>\n\n<b>Nomi:</b> ${data.name}\n<b>Holati:</b> ${data.is_active ? '✅ Faollashtirildi' : '🚫 Bloklandi'}`;
+      break;
+    case "RESTAURANT_DELETED":
+      message = `🗑️ <b>Restoran o'chirildi</b>\n\n<b>Nomi:</b> ${data.name}`;
+      break;
+    case "RESTAURANT_UPDATED":
+      const { oldData, newData } = data;
+      let changes = "";
+      const fieldNames: Record<string, string> = {
+        name: "Nomi", plan_type: "Tarif", paid_until: "To'lov muddati",
+        phone: "Tel", address: "Manzil", info: "Tavsif", is_active: "Holati"
+      };
+
+      for (const key in fieldNames) {
+        let oldVal = oldData[key];
+        let newVal = newData[key];
+        if (key === 'paid_until') {
+          const d1 = oldVal ? new Date(oldVal).toISOString().split('T')[0] : null;
+          const d2 = newVal ? new Date(newVal).toISOString().split('T')[0] : null;
+          if (d1 === d2) continue;
+          oldVal = d1; newVal = d2;
+        }
+        if (oldVal !== newVal) {
+          let displayOld = oldVal || "yo'q";
+          let displayNew = newVal || "yo'q";
+          if (key === 'is_active') {
+            displayOld = oldVal ? "Faol" : "Bloklangan";
+            displayNew = newVal ? "Faol" : "Bloklangan";
+          }
+          changes += `• <b>${fieldNames[key]}:</b> ${displayOld} ➔ ${displayNew}\n`;
+        }
+      }
+      message = `📝 <b>Restoran ma'lumotlari yangilandi</b>\n\n<b>Restoran:</b> ${newData.name}\n\n<b>O'zgarishlar:</b>\n${changes || "• Hech narsa o'zgarmadi"}`;
+      break;
+    default:
+      return res.status(400).json({ error: "Invalid notification type" });
+  }
+
+  await sendTelegramMessage(message);
+  res.json({ success: true });
+});
+
+// Local development server
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running locally on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
