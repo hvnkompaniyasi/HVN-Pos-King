@@ -1,0 +1,6 @@
+# Barcha fayllar uchun LF line endings (Linux uchun)
+* text=auto eol=lf
+
+# PowerShell va bash skriptlar LF bo'lishi kerak
+*.ps1 eol=lf
+*.sh eol=lf
