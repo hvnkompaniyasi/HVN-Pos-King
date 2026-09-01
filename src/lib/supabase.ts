@@ -1,13 +1,13 @@
-﻿import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const URL = import.meta.env.VITE_SUPABASE_URL;
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!URL || !KEY) {
-  console.warn('Supabase sozlamalari .env faylida topilmadi.');
-}
-
-export const supabase = createClient(
-  URL || 'https://placeholder.supabase.co',
-  KEY || 'placeholder-key'
-);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    storageKey: "hvn-pos-king-auth"
+  }
+});
