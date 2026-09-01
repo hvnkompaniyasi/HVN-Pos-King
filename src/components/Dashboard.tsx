@@ -83,6 +83,7 @@ export default function Dashboard() {
           )}
           {activeTab === "agents" && <RestaurantForm />}
           {activeTab === "restaurants" && <RestaurantList />}
+          {activeTab === "reports" && <Reports />}
         </div>
       </main>
     </div>

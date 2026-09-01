@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { LayoutDashboard, Store, Building2, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Store, Building2, LogOut, Menu, X, BarChart3 } from "lucide-react";
 import { useDashboardStore } from "../store/useDashboardStore";
 
 interface NavItemProps {
@@ -55,6 +55,7 @@ export default function Sidebar({ onLogout, mobileOpen, onCloseMobile }: { onLog
         <NavItem icon={LayoutDashboard} label="Bosh sahifa" active={activeTab === "dashboard"} collapsed={collapsed} onClick={go(() => setActiveTab("dashboard"))} />
         <NavItem icon={Store} label="Restoran ochish" active={activeTab === "agents"} collapsed={collapsed} onClick={go(() => { resetForm(); setActiveTab("agents"); })} />
         <NavItem icon={Building2} label="Restoranlar" active={activeTab === "restaurants"} collapsed={collapsed} onClick={go(() => setActiveTab("restaurants"))} />
+        <NavItem icon={BarChart3} label="Hisobotlar" active={activeTab === "reports"} collapsed={collapsed} onClick={go(() => setActiveTab("reports"))} />
       </nav>
 
       <div className="p-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">

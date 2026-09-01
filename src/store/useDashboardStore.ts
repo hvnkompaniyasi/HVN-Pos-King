@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
 interface DashboardState {
-  activeTab: "dashboard" | "agents" | "restaurants";
-  setActiveTab: (tab: "dashboard" | "agents" | "restaurants") => void;
+  activeTab: "dashboard" | "agents" | "restaurants" | "reports";
+  setActiveTab: (tab: "dashboard" | "agents" | "restaurants" | "reports") => void;
   resetForm: () => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
