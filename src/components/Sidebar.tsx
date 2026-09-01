@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LayoutDashboard, Store, Building2, LogOut, Menu, X } from "lucide-react";
 import { useDashboardStore } from "../store/useDashboardStore";
 
@@ -27,14 +27,23 @@ function NavItem({ icon: Icon, label, active = false, collapsed = false, onClick
   );
 }
 
-export default function Sidebar({ onLogout }: { onLogout: () => void }) {
+export default function Sidebar({ onLogout, mobileOpen, onCloseMobile }: { onLogout: () => void; mobileOpen: boolean; onCloseMobile: () => void }) {
   const { activeTab, setActiveTab, resetForm } = useDashboardStore();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("sidebar-collapsed") !== "false");
+
+  useEffect(() => {
+    localStorage.setItem("sidebar-collapsed", collapsed ? "true" : "false");
+  }, [collapsed]);
+
+  const go = (fn: () => void) => () => {
+    fn();
+    onCloseMobile();
+  };
 
   return (
-    <aside className={(collapsed ? "w-20" : "w-72") + " bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-900 border-r border-gray-200 dark:border-gray-800 flex-col hidden md:flex shadow-[4px_0_25px_rgba(0,0,0,0.05)] transition-all duration-500 ease-apple"}>
-      <div className={"p-4 border-b border-gray-200 dark:border-gray-800 flex items-center " + (collapsed ? "justify-center" : "justify-between")}>
-        {!collapsed && (
+    <aside className={"w-72 " + (collapsed ? "md:w-20" : "md:w-72") + " bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col fixed md:relative inset-y-0 left-0 z-50 md:z-auto shadow-[4px_0_25px_rgba(0,0,0,0.05)] transition-all duration-500 ease-apple " + (mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0")}>
+      <div className={"p-4 border-b border-gray-200 dark:border-gray-800 flex items-center " + (collapsed ? "md:justify-center" : "justify-between")}>
+        {(!collapsed || mobileOpen) && (
           <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent pl-2">HVN POS</span>
         )}
         <button onClick={() => setCollapsed(!collapsed)} title={collapsed ? "Menyuni ochish" : "Menyuni yopish"} className="group w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_2px_10px_rgba(0,0,0,0.08)]">
@@ -43,17 +52,17 @@ export default function Sidebar({ onLogout }: { onLogout: () => void }) {
       </div>
 
       <nav className="flex-1 px-3 py-6 space-y-3">
-        <NavItem icon={LayoutDashboard} label="Bosh sahifa" active={activeTab === "dashboard"} collapsed={collapsed} onClick={() => setActiveTab("dashboard")} />
-        <NavItem icon={Store} label="Restoran ochish" active={activeTab === "agents"} collapsed={collapsed} onClick={() => { resetForm(); setActiveTab("agents"); }} />
-        <NavItem icon={Building2} label="Restoranlar" active={activeTab === "restaurants"} collapsed={collapsed} onClick={() => setActiveTab("restaurants")} />
+        <NavItem icon={LayoutDashboard} label="Bosh sahifa" active={activeTab === "dashboard"} collapsed={collapsed} onClick={go(() => setActiveTab("dashboard"))} />
+        <NavItem icon={Store} label="Restoran ochish" active={activeTab === "agents"} collapsed={collapsed} onClick={go(() => { resetForm(); setActiveTab("agents"); })} />
+        <NavItem icon={Building2} label="Restoranlar" active={activeTab === "restaurants"} collapsed={collapsed} onClick={go(() => setActiveTab("restaurants"))} />
       </nav>
 
       <div className="p-3 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-        <button onClick={onLogout} title="Chiqish" className={"group w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-all duration-500 ease-apple text-sm font-semibold " + (collapsed ? "justify-center" : "")}>
+        <button onClick={onLogout} title="Chiqish" className={"group w-full flex items-center gap-3 px-3 py-3 rounded-2xl text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-all duration-500 ease-apple text-sm font-semibold " + (collapsed ? "md:justify-center" : "")}>
           <span className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 group-hover:bg-white dark:group-hover:bg-gray-700 group-hover:shadow-[0_4px_15px_rgba(239,68,68,0.35)] flex items-center justify-center flex-shrink-0 transition-all duration-500 group-hover:scale-105">
             <LogOut className="w-5 h-5 icon-anim icon-wiggle" />
           </span>
-          {!collapsed && <span>Chiqish</span>}
+          {(!collapsed || mobileOpen) && <span>Chiqish</span>}
         </button>
       </div>
     </aside>

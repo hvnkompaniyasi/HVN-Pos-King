@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Bell, Search, Sun, Moon } from "lucide-react";
+import { Bell, Search, Sun, Moon, Menu } from "lucide-react";
 import NotificationPanel from "./NotificationPanel";
 import { initialNotifications } from "../data/notifications";
 import { useDashboardStore } from "../store/useDashboardStore";
 
-export default function Header() {
+export default function Header({ onMenuClick }: { onMenuClick: () => void }) {
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
@@ -47,6 +47,9 @@ export default function Header() {
       )}
 
       <div className="flex items-center gap-4 ml-auto">
+        <button onClick={onMenuClick} className="md:hidden group w-12 h-12 rounded-2xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 shadow-[0_2px_10px_rgba(0,0,0,0.08)]" title="Menyu">
+          <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300 icon-anim icon-wiggle" />
+        </button>
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}

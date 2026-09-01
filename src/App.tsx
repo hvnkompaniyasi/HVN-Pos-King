@@ -5,6 +5,7 @@ import { useAuthStore } from "./store/useAuthStore";
 
 function App() {
   const user = useAuthStore((s) => s.user);
+  const profile = useAuthStore((s) => s.profile);
   const allowed = useAuthStore((s) => s.allowed);
   const loading = useAuthStore((s) => s.loading);
   const initialize = useAuthStore((s) => s.initialize);
@@ -21,7 +22,8 @@ function App() {
     );
   }
 
-  return user && allowed ? <Dashboard /> : <Login />;
+  if (!user || !allowed) return <Login />;
+  return <Dashboard />;
 }
 
 export default App;

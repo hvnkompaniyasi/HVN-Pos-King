@@ -50,3 +50,42 @@ body {
 .group:hover .icon-wiggle { transform: rotate(-10deg) scale(1.2); }
 .group:hover .icon-bounce { transform: translateY(-4px) scale(1.15); }
 .group:hover .icon-spin { transform: rotate(180deg) scale(1.1); }
+
+/* Chiroyli scrollbar - Apple uslubida */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #cbd5e1, #94a3b8);
+  border-radius: 10px;
+  transition: all 0.3s;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #3b82f6, #2563eb);
+}
+
+/* Dark mode scrollbar */
+.dark *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #475569, #334155);
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #3b82f6, #2563eb);
+}
+
+/* Firefox uchun */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+.dark * {
+  scrollbar-color: #475569 transparent;
+}
+
+/* Silliq scroll */
+html, body {
+  scroll-behavior: smooth;
+}

@@ -11,7 +11,7 @@ interface DashboardState {
 export const useDashboardStore = create<DashboardState>((set) => ({
   activeTab: "dashboard",
   setActiveTab: (tab) => set({ activeTab: tab }),
-  resetForm: () => console.log("Form reseted"),
+  resetForm: () => {},
   searchQuery: "",
   setSearchQuery: (query) => set({ searchQuery: query })
 }));

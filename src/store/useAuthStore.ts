@@ -22,6 +22,14 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+function friendlyError(message: string): string {
+  if (message.includes("Invalid login credentials")) return "Email yoki parol noto'g'ri";
+  if (message.includes("not confirmed")) return "Email tasdiqlanmagan";
+  if (message.includes("Rate limit")) return "Juda ko'p urinish - 1 daqiqa kuting";
+  if (message.includes("API key")) return "Supabase kalitlari o'qilmadi - Vite ni qayta ishga tushiring";
+  return message;
+}
+
 async function loadProfile(userId: string): Promise<Profile | null> {
   const { data } = await supabase
     .from("profiles")
@@ -33,7 +41,7 @@ async function loadProfile(userId: string): Promise<Profile | null> {
 
 function checkAccess(profile: Profile | null): boolean {
   if (!profile) return false;
-  return profile.role === "admin" || profile.allowed_apps.includes(APP_ID);
+  return profile.role === "admin" || (profile.role !== "restaurant" && profile.allowed_apps.includes(APP_ID));
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -50,36 +58,27 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (session) {
       profile = await loadProfile(session.user.id);
     }
-    set({
-      session,
-      user: session?.user ?? null,
-      profile,
-      allowed: checkAccess(profile),
-      loading: false
-    });
+    set({ session, user: session?.user ?? null, profile, allowed: checkAccess(profile), loading: false });
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      let profile: Profile | null = null;
-      if (session) {
-        profile = await loadProfile(session.user.id);
-      }
-      set({
-        session,
-        user: session?.user ?? null,
-        profile,
-        allowed: checkAccess(profile)
-      });
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setTimeout(async () => {
+        let profile: Profile | null = null;
+        if (session) {
+          profile = await loadProfile(session.user.id);
+        }
+        set({ session, user: session?.user ?? null, profile, allowed: checkAccess(profile) });
+      }, 0);
     });
   },
 
   login: async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
+    if (error) return { error: friendlyError(error.message) };
 
     const profile = await loadProfile(data.user.id);
     if (!checkAccess(profile)) {
       await supabase.auth.signOut();
-      return { error: "Bu hisob ushbu tizimga kirish huquqiga ega emas" };
+      return { error: "Invalid login credentials" };
     }
 
     set({ user: data.user, profile, allowed: true });

@@ -14,7 +14,9 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const result = await login(email.trim(), password);
+    const identifier = email.trim();
+    const loginEmail = /^[+0-9()-\s]+$/.test(identifier) ? identifier.replace(/\D/g, "") + "@hvn.rest" : identifier;
+    const result = await login(loginEmail, password);
     if (result.error) {
       setError(result.error);
       setLoading(false);
@@ -49,11 +51,11 @@ export default function Login() {
             <div className="relative group">
               <Mail className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2 icon-anim group-focus-within:text-blue-400 group-focus-within:scale-110" />
               <input
-                type="email"
+                type="text"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email manzilingiz"
+                placeholder="Email yoki telefon raqam"
                 className={inputClass}
               />
             </div>
