@@ -5,6 +5,7 @@ import RestaurantList from "./RestaurantList";
 import RestaurantForm from "./RestaurantForm";
 import StatCard from "./StatCard";
 import TariffCard from "./TariffCard";
+import Reports from "./Reports";
 import { useDashboardStore } from "../store/useDashboardStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { supabase } from "../lib/supabase";
